@@ -5,10 +5,40 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val debugKeystore = rootProject.layout.projectDirectory.file("debug.keystore").asFile
+if (!debugKeystore.exists()) {
+    val keytool = File(System.getProperty("java.home"), "bin/keytool").let {
+        if (it.exists()) it else File(it.parentFile, "keytool.exe")
+    }
+    providers.exec {
+        commandLine(
+            keytool.absolutePath,
+            "-genkeypair",
+            "-keystore", debugKeystore.absolutePath,
+            "-storepass", "android",
+            "-keypass", "android",
+            "-alias", "androiddebugkey",
+            "-keyalg", "RSA",
+            "-keysize", "2048",
+            "-validity", "10000",
+            "-dname", "CN=Android Debug,O=Android,C=US"
+        )
+    }.result.get()
+}
+
 android {
     namespace = "com.studyflow.app"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
+
+    signingConfigs {
+        getByName("debug") {
+            storeFile = debugKeystore
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 
     defaultConfig {
         applicationId = "com.studyflow.app"
@@ -24,6 +54,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
